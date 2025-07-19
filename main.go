@@ -127,6 +127,10 @@ func mergeDifferentSizedImages() {
 	pdfFile := "output.pdf"
 	convertImageToPDF(combinedImageFile, pdfFile)
 
+	// Convert the combined images to a resized PDF
+	resizedPdfFile := "outputPdfResized.pdf"
+	convertJpgToPdfColored(combinedImageFile, resizedPdfFile)
+
 	fmt.Println("Process completed successfully!")
 }
 
@@ -190,7 +194,51 @@ func convertImageToPDF(imagePath, pdfPath string) {
 	imgHeight *= scale
 
 	// Add image to the PDF
-	pdf.Image(imagePath, 0, 0, imgWidth, imgHeight, false, "", 0, "")
+	pdf.Image(imagePath, ((pageWidth / 2) - (imgWidth / 2)), 0, imgWidth, imgHeight, false, "", 0, "")
+
+	// Output the PDF to a file
+	err = pdf.OutputFileAndClose(pdfPath)
+	if err != nil {
+		log.Fatalf("failed to save PDF %s: %v", pdfPath, err)
+	}
+}
+
+// Function to convert an image to a PDF
+func convertJpgToPdfColored(imagePath, pdfPath string) {
+	// Initialize PDF
+	pdf := gofpdf.New("P", "mm", "Letter", "")
+	pdf.SetFillColor(0, 0, 0)
+
+	// Open the image file
+	file, err := os.Open(imagePath)
+	if err != nil {
+		log.Fatalf("failed to open image %s: %v", imagePath, err)
+	}
+	defer file.Close()
+
+	img, _, err := image.Decode(file)
+	if err != nil {
+		log.Fatalf("failed to decode image %s: %v", imagePath, err)
+	}
+
+	// Set PDF properties
+	pdf.AddPage()
+
+	// Convert the image size to fit the page
+	pageWidth, pageHeight := pdf.GetPageSize()
+	imgWidth := float64(img.Bounds().Dx())
+	imgHeight := float64(img.Bounds().Dy())
+
+	// Scale image to fit within the A4 page
+	scale := min(pageWidth/imgWidth, pageHeight/imgHeight)
+	imgWidth *= scale
+	imgHeight *= scale
+
+	// Fill Background
+	pdf.Rect(0, 0, pageWidth, pageHeight, "F")
+
+	// Add image to the PDF
+	pdf.Image(imagePath, ((pageWidth / 2) - (imgWidth / 2)), 0, imgWidth, imgHeight, false, "", 0, "")
 
 	// Output the PDF to a file
 	err = pdf.OutputFileAndClose(pdfPath)
